@@ -1,0 +1,75 @@
+<html>
+<head>
+    <title>Stock Ticker</title>
+</head>
+<body>
+<h1>Stock Ticker</h1>
+
+<table>
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Price</th>
+    </tr>
+    </thead>
+    <tbody id="price"></tbody>
+</table>
+
+<p class="new">
+    Name: <input type="text" class="name"/>
+    Price: <input type="number" class="price"/>
+    <button class="add">Add</button>
+    <button class="remove-all">Remove All</button>
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.0.3/sockjs.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
+<script>
+    var socket = new SockJS("/stockticker");
+    var stompClient = Stomp.over(socket);
+
+    function renderPrice(frame) {
+      var stocks = JSON.parse(frame.body);
+      $('#price').empty();
+      for(var i in stocks) {
+        var stock = stocks[i];
+        $('#price').append(
+          $('<tr>').append(
+            $('<td>').html(stock.name),
+            $('<td>').html(stock.price.toFixed(2))
+          )
+        );
+      }
+    }
+
+    var connectCallback = function() {
+      stompClient.subscribe('/topic/prices', renderPrice);
+    };
+
+    var errorCallback = function(error) {
+      alert(error.headers.message);
+    };
+    stompClient.connect("guest", "guest", connectCallback, errorCallback);
+
+    $(document).ready(function() {
+      $('.add').click(function(e){
+        e.preventDefault();
+        var name = $('.new .name').val();
+        var price = $('.new .price').val();
+        var jsonstr = JSON.stringify({ 'name': name, 'price': price });
+        stompClient.send("/app/addStock", {}, jsonstr);
+        return false;
+      });
+    });
+
+    $(document).ready(function() {
+      $('.remove-all').click(function(e) {
+        e.preventDefault();
+        stompClient.send("/app/removeAll");
+        return false;
+      });
+    });
+</script>
+</body>
+</html>
